@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Implementations\**" />
+    <EmbeddedResource Remove="Implementations\**" />
+    <None Remove="Implementations\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Interfaces\" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <ProjectReference Include="..\SMS.Generic.Common\SMS.Generic.Common.csproj" />
+    <ProjectReference Include="..\SMS.Generic.Enums\SMS.Generic.Enums.csproj" />
+  </ItemGroup>
+
+</Project>

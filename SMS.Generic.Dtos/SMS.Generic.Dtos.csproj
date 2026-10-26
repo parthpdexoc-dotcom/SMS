@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SMS.Generic.Common\SMS.Generic.Common.csproj" />
+    <ProjectReference Include="..\SMS.Generic.Entities\SMS.Generic.Entities.csproj" />
+    <ProjectReference Include="..\SMS.Generic.Enums\SMS.Generic.Enums.csproj" />
+    <ProjectReference Include="..\SMS.Generic.Model\SMS.Generic.Models.csproj" />
+  </ItemGroup>
+
+</Project>

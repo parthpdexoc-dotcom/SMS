@@ -1,0 +1,46 @@
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace SMS.Data.Migrations.Audit
+{
+    /// <inheritdoc />
+    public partial class InitialRequesterAudit : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.EnsureSchema(
+                name: "dbo");
+
+            migrationBuilder.CreateTable(
+                name: "Requester_Audit",
+                schema: "dbo",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    EntityId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    DisplayName = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: false),
+                    ChangedFields = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Action = table.Column<int>(type: "int", nullable: false),
+                    ChangedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UserId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    CorrelationId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Requester_Audit", x => x.Id);
+                });
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropTable(
+                name: "Requester_Audit",
+                schema: "dbo");
+        }
+    }
+}

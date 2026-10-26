@@ -1,0 +1,35 @@
+namespace SMS.Generic.Enums;
+
+/// <summary>Selects which audit trail to read (maps 1:1 to audit tables/repos).</summary>
+public enum AuditHistoryTable
+{
+    Requester = 0,
+    Post = 1,
+    Request = 2,
+    PostPosition = 3,
+    Employee = 4,
+    ClosedPostPosition = 5,
+    ClosedPostPositionEquipment = 6,
+    RequestSchedule = 7,
+    EmployeeType = 8,
+    Skill = 9,
+    BusinessType = 10,
+    EmployeeStatus = 11,
+    DepartmentResponseArea = 12,
+    RoutingGroup = 13,
+    HolidayDay = 14,
+    DepartmentDivisions = 15,
+    DepartmentActivityType = 16,
+    EquipmentType = 17,
+    DepartmentEquipment = 18,
+    DepartmentFee = 19,
+    PayCode = 20,
+    Payment = 21,
+    PaymentAllocation = 22,
+    RequesterLedger = 23,
+    Invoice = 24,
+    InvoiceDetail = 25,
+    PaymentType = 26,
+    Placeholder = 27,
+    EmailTemplate = 28,
+}
