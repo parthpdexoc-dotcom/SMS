@@ -45,13 +45,12 @@ jobs:
       - name: Execute Backend Deployment
         shell: powershell
         run: |
-          # Determine environment from input or branch
+          $branch = "${{ github.ref_name }}"
           $envName = "${{ github.event.inputs.environment }}"
           if ([string]::IsNullOrWhiteSpace($envName)) {
-            $branch = "${{ github.ref_name }}"
             if ($branch -match "uat") {
               $envName = "UAT"
-            } elseif ($branch -in @("main", "master")) {
+            } elseif ($branch -in @("main", "master", "prod", "production")) {
               $envName = "Prod"
             } else {
               $envName = "Dev"
@@ -64,7 +63,7 @@ jobs:
           Write-Host "=========================================================="
           Write-Host " Triggering SMS Backend IIS Deployment via GitHub Actions"
           Write-Host " Environment:     $envName"
-          Write-Host " Branch:          ${{ github.ref_name }}"
+          Write-Host " Branch:          $branch"
           if (-not [string]::IsNullOrWhiteSpace($sitePath)) {
             Write-Host " Custom IIS Path: $sitePath"
           }
@@ -74,16 +73,16 @@ jobs:
           Write-Host " Protected Files: appsettings.json, appsettings.*.json, web.config"
           Write-Host "=========================================================="
 
-          $deployArgs = @(
-            "-SkipGitPull",
-            "-Environment", "$envName",
-            "-TargetBranch", "${{ github.ref_name }}"
-          )
+          $deployParams = @{
+            SkipGitPull  = $true
+            Environment  = $envName
+            TargetBranch = $branch
+          }
           if (-not [string]::IsNullOrWhiteSpace($sitePath)) {
-            $deployArgs += @("-IisSitePath", "$sitePath")
+            $deployParams["IisSitePath"] = $sitePath
           }
           if (-not [string]::IsNullOrWhiteSpace($appPool)) {
-            $deployArgs += @("-AppPoolName", "$appPool")
+            $deployParams["AppPoolName"] = $appPool
           }
 
-          & ".\deploy\deploy.ps1" @deployArgs
+          .\deploy\deploy.ps1 @deployParams
