@@ -1,0 +1,61 @@
+name: Deploy Backend (Prod)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+  workflow_dispatch:
+    inputs:
+      iis_site_path:
+        description: 'Target IIS Site Directory for Production'
+        required: false
+        default: 'C:\inetpub\wwwroot\SMSApi'
+      app_pool_name:
+        description: 'Target Application Pool / Service Name'
+        required: false
+        default: 'Plexoc_Prod'
+
+jobs:
+  deploy:
+    name: Deploy to Production IIS
+    runs-on: [self-hosted, windows]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Execute Prod Backend Deployment
+        shell: powershell
+        run: |
+          $sitePath = "${{ github.event.inputs.iis_site_path }}"
+          if ([string]::IsNullOrWhiteSpace($sitePath)) {
+            $sitePath = "C:\inetpub\wwwroot\SMSApi"
+          }
+
+          $appPool = "${{ github.event.inputs.app_pool_name }}"
+          if ([string]::IsNullOrWhiteSpace($appPool)) {
+            $appPool = "Plexoc_Prod"
+          }
+
+          Write-Host "=========================================================="
+          Write-Host " Triggering SMS Backend Prod IIS Deployment via GitHub Actions"
+          Write-Host " Environment:     Prod"
+          Write-Host " Target IIS Path: $sitePath"
+          Write-Host " Service/AppPool: $appPool"
+          Write-Host " Branch:          ${{ github.ref_name }}"
+          Write-Host " Protected:       appsettings.json, appsettings.*.json, web.config"
+          Write-Host " Backup:          C:\inetpub\wwwroot\Backups"
+          Write-Host "=========================================================="
+
+          $deployParams = @{
+            SkipGitPull  = $true
+            Environment  = "Prod"
+            TargetBranch = "${{ github.ref_name }}"
+            IisSitePath  = $sitePath
+            AppPoolName  = $appPool
+          }
+
+          .\deploy\deploy.ps1 @deployParams
