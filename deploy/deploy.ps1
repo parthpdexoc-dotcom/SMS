@@ -83,49 +83,25 @@ try {
     $defaultIisPath = ""
     $defaultAppPool = ""
 
-    switch ($Environment) {
-        "Dev" {
-            $defaultAppPool = "Plexoc"
-            if (-not [string]::IsNullOrWhiteSpace($IisSitePath) -and (Test-Path $IisSitePath)) {
-                $defaultIisPath = $IisSitePath
-            } elseif (Test-Path "C:\inetpub\wwwroot\Plexoc\SMSAPI") {
-                $defaultIisPath = "C:\inetpub\wwwroot\Plexoc\SMSAPI"
-            } elseif (Test-Path "C:\inetpub\wwwroot\SMS_API") {
-                $defaultIisPath = "C:\inetpub\wwwroot\SMS_API"
-            } else {
-                $defaultIisPath = "C:\inetpub\wwwroot\SMSAPI"
-            }
-        }
-        "UAT" {
-            $defaultAppPool = "Plexoc_UAT"
-            if (-not [string]::IsNullOrWhiteSpace($IisSitePath) -and (Test-Path $IisSitePath)) {
-                $defaultIisPath = $IisSitePath
-            } elseif (Test-Path "C:\inetpub\wwwroot\Plexoc\SMSAPI_UAT") {
-                $defaultIisPath = "C:\inetpub\wwwroot\Plexoc\SMSAPI_UAT"
-            } else {
-                $defaultIisPath = "C:\inetpub\wwwroot\SMSAPI_UAT"
-            }
-        }
-        "Prod" {
-            $defaultAppPool = "Plexoc_Prod"
-            if (-not [string]::IsNullOrWhiteSpace($IisSitePath) -and (Test-Path $IisSitePath)) {
-                $defaultIisPath = $IisSitePath
-            } elseif (Test-Path "C:\inetpub\wwwroot\Plexoc\SMSAPI_Prod") {
-                $defaultIisPath = "C:\inetpub\wwwroot\Plexoc\SMSAPI_Prod"
-            } else {
-                $defaultIisPath = "C:\inetpub\wwwroot\SMSAPI"
-            }
-        }
-    }
-
+    # Resolve default IIS Site Path and AppPool if not specified
     if ([string]::IsNullOrWhiteSpace($IisSitePath)) {
-        $IisSitePath = $defaultIisPath
+        if (Test-Path "D:\PublishedProject\wwwroot\SMSapi") {
+            $IisSitePath = "D:\PublishedProject\wwwroot\SMSapi"
+        } elseif (Test-Path "D:\PublishedProject\wwwroot\SMSAPI") {
+            $IisSitePath = "D:\PublishedProject\wwwroot\SMSAPI"
+        } elseif (Test-Path "C:\inetpub\wwwroot\SMSApi") {
+            $IisSitePath = "C:\inetpub\wwwroot\SMSApi"
+        } elseif (Test-Path "C:\inetpub\wwwroot\SMSAPI") {
+            $IisSitePath = "C:\inetpub\wwwroot\SMSAPI"
+        } else {
+            $IisSitePath = "D:\PublishedProject\wwwroot\SMSapi"
+        }
     }
     if ([string]::IsNullOrWhiteSpace($AppPoolName)) {
-        $AppPoolName = $defaultAppPool
+        $AppPoolName = "Plexoc"
     }
 
-    Write-Step "Starting SMS Backend Deployment ($Environment Environment)..."
+    Write-Step "Starting SMS Backend Deployment..."
     Write-Host "Environment:     $Environment"
     Write-Host "Target IIS Path: $IisSitePath"
     Write-Host "Service/AppPool: $AppPoolName"
@@ -145,19 +121,15 @@ try {
         if ($hasFiles) {
             $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
             $parentDir = Split-Path $IisSitePath -Parent
-            $backupBase = Join-Path $parentDir "Backups"
-            if (-not (Test-Path $backupBase)) {
-                New-Item -ItemType Directory -Path $backupBase -Force | Out-Null
-            }
             $targetFolderName = (Get-Item $IisSitePath).Name
-            $backupFolder = Join-Path $backupBase "${targetFolderName}_$timestamp"
+            $backupFolder = Join-Path $parentDir "${targetFolderName} - Copy ($timestamp)"
             
             Write-Step "CREATING BACKUP: Copying live files to '$backupFolder' before deployment..."
             New-Item -ItemType Directory -Path $backupFolder -Force | Out-Null
             
             # Fast recursive copy to backup folder
             & robocopy.exe "$IisSitePath" "$backupFolder" /E /R:1 /W:1 /NP | Out-Null
-            Write-Success "Full backup created successfully at: '$backupFolder'"
+            Write-Success "Full backup copy created successfully at: '$backupFolder'"
         }
     } else {
         Write-WarningMsg "Target directory '$IisSitePath' does not exist yet. Creating directory..."

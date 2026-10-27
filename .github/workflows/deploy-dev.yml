@@ -13,7 +13,7 @@ on:
       iis_site_path:
         description: 'Target IIS Site Directory on Windows Server'
         required: false
-        default: 'C:\inetpub\wwwroot\SMSApi'
+        default: 'D:\PublishedProject\wwwroot\SMSapi'
       app_pool_name:
         description: 'Target Application Pool / Service Name'
         required: false
@@ -32,7 +32,7 @@ jobs:
         run: |
           $sitePath = "${{ github.event.inputs.iis_site_path }}"
           if ([string]::IsNullOrWhiteSpace($sitePath)) {
-            $sitePath = "C:\inetpub\wwwroot\SMSApi"
+            $sitePath = "D:\PublishedProject\wwwroot\SMSapi"
           }
 
           $appPool = "${{ github.event.inputs.app_pool_name }}"
@@ -47,7 +47,7 @@ jobs:
           Write-Host " Service/AppPool: $appPool"
           Write-Host " Branch:          ${{ github.ref_name }}"
           Write-Host " Protected:       appsettings.json, appsettings.*.json, web.config"
-          Write-Host " Backup:          C:\inetpub\wwwroot\Backups"
+          Write-Host " Backup Copy:     $sitePath - Copy (timestamp)"
           Write-Host "=========================================================="
 
           $deployParams = @{
