@@ -91,74 +91,74 @@ namespace SMS.Controllers
         /// Unified requester workspace list. Daily workspace (<c>isDailyWorkspace: true</c>) returns paged summary rows
         /// (<c>totalRecords</c> + one page in <c>data</c>); nested <c>requests</c> appear only when <c>searchText</c> is set.
         /// </summary>
-        //[AuthorizeAny(nameof(AuthorizationPolicyType.RequesterManagerOnly), nameof(AuthorizationPolicyType.IAAuditViewOnly))]
-        //[HttpPost("requester-workspace-list")]
-        //[ProducesResponseType(typeof(PagedList<RequesterWorkspaceListItemDto>), StatusCodes.Status200OK)]
-        //public async Task<ActionResult<PagedList<RequesterWorkspaceListItemDto>>> GetRequesterWorkspaceListAsync(
-        //    [FromBody] RequesterWorkspaceListFilterDto? filter,
-        //    CancellationToken cancellationToken)
-        //{
-        //    filter ??= new RequesterWorkspaceListFilterDto();
-        //    var pageParam = filter.PageParam ?? new PageParam();
-        //    var traceId = HttpContext.TraceIdentifier;
-        //    var sw = Stopwatch.StartNew();
+        [AuthorizeAny(nameof(AuthorizationPolicyType.RequesterManagerOnly), nameof(AuthorizationPolicyType.IAAuditViewOnly))]
+        [HttpPost("requester-workspace-list")]
+        [ProducesResponseType(typeof(PagedList<RequesterWorkspaceListItemDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedList<RequesterWorkspaceListItemDto>>> GetRequesterWorkspaceListAsync(
+            [FromBody] RequesterWorkspaceListFilterDto? filter,
+            CancellationToken cancellationToken)
+        {
+            filter ??= new RequesterWorkspaceListFilterDto();
+            var pageParam = filter.PageParam ?? new PageParam();
+            var traceId = HttpContext.TraceIdentifier;
+            var sw = Stopwatch.StartNew();
 
-        //    _logger.LogInformation(
-        //        "RequesterWorkspaceList request TraceId={TraceId} IsDailyWorkspace={IsDailyWorkspace} Page={Page} PageSize={PageSize} " +
-        //        "StartDate={StartDate} EndDate={EndDate} RequesterName={RequesterName} HasSearchText={HasSearchText} " +
-        //        "ShiftWindow30Min={ShiftWindow30Min} IncludeCompleted={IncludeCompleted}",
-        //        traceId,
-        //        filter.IsDailyWorkspace,
-        //        pageParam.Page,
-        //        pageParam.PageSize,
-        //        filter.StartDate,
-        //        filter.EndDate,
-        //        filter.RequesterName,
-        //        !string.IsNullOrWhiteSpace(filter.SearchText),
-        //        filter.IsShiftStartingWithin30Minutes,
-        //        filter.IncludeCompleted);
+            _logger.LogInformation(
+                "RequesterWorkspaceList request TraceId={TraceId} IsDailyWorkspace={IsDailyWorkspace} Page={Page} PageSize={PageSize} " +
+                "StartDate={StartDate} EndDate={EndDate} RequesterName={RequesterName} HasSearchText={HasSearchText} " +
+                "ShiftWindow30Min={ShiftWindow30Min} IncludeCompleted={IncludeCompleted}",
+                traceId,
+                filter.IsDailyWorkspace,
+                pageParam.Page,
+                pageParam.PageSize,
+                filter.StartDate,
+                filter.EndDate,
+                filter.RequesterName,
+                !string.IsNullOrWhiteSpace(filter.SearchText),
+                filter.IsShiftStartingWithin30Minutes,
+                filter.IncludeCompleted);
 
-        //    try
-        //    {
-        //        var result = await _service.GetRequesterWorkspaceListAsync(filter, cancellationToken);
-        //        sw.Stop();
+            try
+            {
+                var result = await _service.GetRequesterWorkspaceListAsync(filter, cancellationToken);
+                sw.Stop();
 
-        //        var rowCount = result.Data?.Count ?? 0;
-        //        var nestedRequestCount = result.Data?.Sum(r => r.Requests?.Count ?? 0) ?? 0;
+                var rowCount = result.Data?.Count ?? 0;
+                var nestedRequestCount = result.Data?.Sum(r => r.Requests?.Count ?? 0) ?? 0;
 
-        //        _logger.LogInformation(
-        //            "RequesterWorkspaceList response TraceId={TraceId} ElapsedMs={ElapsedMs} TotalRecords={TotalRecords} " +
-        //            "DataRows={DataRows} NestedRequests={NestedRequests}",
-        //            traceId,
-        //            sw.ElapsedMilliseconds,
-        //            result.TotalRecords,
-        //            rowCount,
-        //            nestedRequestCount);
+                _logger.LogInformation(
+                    "RequesterWorkspaceList response TraceId={TraceId} ElapsedMs={ElapsedMs} TotalRecords={TotalRecords} " +
+                    "DataRows={DataRows} NestedRequests={NestedRequests}",
+                    traceId,
+                    sw.ElapsedMilliseconds,
+                    result.TotalRecords,
+                    rowCount,
+                    nestedRequestCount);
 
-        //        if (sw.ElapsedMilliseconds >= 5000)
-        //        {
-        //            _logger.LogWarning(
-        //                "RequesterWorkspaceList slow TraceId={TraceId} ElapsedMs={ElapsedMs} IsDailyWorkspace={IsDailyWorkspace} TotalRecords={TotalRecords}",
-        //                traceId,
-        //                sw.ElapsedMilliseconds,
-        //                filter.IsDailyWorkspace,
-        //                result.TotalRecords);
-        //        }
+                if (sw.ElapsedMilliseconds >= 5000)
+                {
+                    _logger.LogWarning(
+                        "RequesterWorkspaceList slow TraceId={TraceId} ElapsedMs={ElapsedMs} IsDailyWorkspace={IsDailyWorkspace} TotalRecords={TotalRecords}",
+                        traceId,
+                        sw.ElapsedMilliseconds,
+                        filter.IsDailyWorkspace,
+                        result.TotalRecords);
+                }
 
-        //        return Ok(result);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        sw.Stop();
-        //        _logger.LogError(
-        //            ex,
-        //            "RequesterWorkspaceList failed TraceId={TraceId} ElapsedMs={ElapsedMs} IsDailyWorkspace={IsDailyWorkspace}",
-        //            traceId,
-        //            sw.ElapsedMilliseconds,
-        //            filter.IsDailyWorkspace);
-        //        throw;
-        //    }
-        //}
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                _logger.LogError(
+                    ex,
+                    "RequesterWorkspaceList failed TraceId={TraceId} ElapsedMs={ElapsedMs} IsDailyWorkspace={IsDailyWorkspace}",
+                    traceId,
+                    sw.ElapsedMilliseconds,
+                    filter.IsDailyWorkspace);
+                throw;
+            }
+        }
 
         /// <summary>
         /// Gets requests for a requester with optional date, type, status, and release-type filters.
