@@ -86,9 +86,11 @@ try {
     switch ($Environment) {
         "Dev" {
             $defaultAppPool = "Plexoc"
-            if (-not (Test-Path $IisSitePath) -and (Test-Path "C:\inetpub\wwwroot\Plexoc\SMSAPI")) {
+            if (-not [string]::IsNullOrWhiteSpace($IisSitePath) -and (Test-Path $IisSitePath)) {
+                $defaultIisPath = $IisSitePath
+            } elseif (Test-Path "C:\inetpub\wwwroot\Plexoc\SMSAPI") {
                 $defaultIisPath = "C:\inetpub\wwwroot\Plexoc\SMSAPI"
-            } elseif (-not (Test-Path $IisSitePath) -and (Test-Path "C:\inetpub\wwwroot\SMS_API")) {
+            } elseif (Test-Path "C:\inetpub\wwwroot\SMS_API") {
                 $defaultIisPath = "C:\inetpub\wwwroot\SMS_API"
             } else {
                 $defaultIisPath = "C:\inetpub\wwwroot\SMSAPI"
@@ -96,7 +98,9 @@ try {
         }
         "UAT" {
             $defaultAppPool = "Plexoc_UAT"
-            if (-not (Test-Path $IisSitePath) -and (Test-Path "C:\inetpub\wwwroot\Plexoc\SMSAPI_UAT")) {
+            if (-not [string]::IsNullOrWhiteSpace($IisSitePath) -and (Test-Path $IisSitePath)) {
+                $defaultIisPath = $IisSitePath
+            } elseif (Test-Path "C:\inetpub\wwwroot\Plexoc\SMSAPI_UAT") {
                 $defaultIisPath = "C:\inetpub\wwwroot\Plexoc\SMSAPI_UAT"
             } else {
                 $defaultIisPath = "C:\inetpub\wwwroot\SMSAPI_UAT"
@@ -104,10 +108,10 @@ try {
         }
         "Prod" {
             $defaultAppPool = "Plexoc_Prod"
-            if (-not (Test-Path $IisSitePath) -and (Test-Path "C:\inetpub\wwwroot\Plexoc\SMSAPI_Prod")) {
+            if (-not [string]::IsNullOrWhiteSpace($IisSitePath) -and (Test-Path $IisSitePath)) {
+                $defaultIisPath = $IisSitePath
+            } elseif (Test-Path "C:\inetpub\wwwroot\Plexoc\SMSAPI_Prod") {
                 $defaultIisPath = "C:\inetpub\wwwroot\Plexoc\SMSAPI_Prod"
-            } elseif (-not (Test-Path $IisSitePath) -and (Test-Path "C:\inetpub\wwwroot\SMSAPI_Prod")) {
-                $defaultIisPath = "C:\inetpub\wwwroot\SMSAPI_Prod"
             } else {
                 $defaultIisPath = "C:\inetpub\wwwroot\SMSAPI"
             }
@@ -304,9 +308,11 @@ try {
 }
 catch {
     Write-Failure "Deployment FAILED: $_"
-    $fallbackOffline = Join-Path $IisSitePath "app_offline.htm"
-    if (Test-Path $fallbackOffline) {
-        Remove-Item -Path $fallbackOffline -Force -ErrorAction SilentlyContinue
+    if (-not [string]::IsNullOrWhiteSpace($IisSitePath)) {
+        $fallbackOffline = Join-Path $IisSitePath "app_offline.htm"
+        if (Test-Path $fallbackOffline) {
+            Remove-Item -Path $fallbackOffline -Force -ErrorAction SilentlyContinue
+        }
     }
     exit 1
 }
