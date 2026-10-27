@@ -5,20 +5,31 @@ on:
     branches:
       - develop
       - Develop
+      - uat
+      - UAT
       - main
     paths-ignore:
       - 'README.md'
       - 'docs/**'
   workflow_dispatch:
     inputs:
+      environment:
+        description: 'Deployment Environment'
+        required: true
+        type: choice
+        options:
+          - Dev
+          - UAT
+          - Prod
+        default: 'Dev'
       iis_site_path:
-        description: 'Target IIS Site Directory on Windows Server'
+        description: 'Override Target IIS Site Directory (leave blank for environment default)'
         required: false
-        default: 'C:\inetpub\wwwroot\SMSAPI'
+        default: ''
       app_pool_name:
-        description: 'IIS Application Pool / Service Name'
+        description: 'Override IIS Application Pool / Service Name (leave blank for environment default)'
         required: false
-        default: 'Plexoc'
+        default: ''
       skip_deployment:
         description: 'Build and validate only (do not deploy to IIS)'
         type: boolean
@@ -34,22 +45,45 @@ jobs:
       - name: Execute Backend Deployment
         shell: powershell
         run: |
-          $sitePath = "${{ github.event.inputs.iis_site_path }}"
-          if ([string]::IsNullOrWhiteSpace($sitePath)) { $sitePath = "C:\inetpub\wwwroot\SMSAPI" }
+          # Determine environment from input or branch
+          $envName = "${{ github.event.inputs.environment }}"
+          if ([string]::IsNullOrWhiteSpace($envName)) {
+            $branch = "${{ github.ref_name }}"
+            if ($branch -match "uat") {
+              $envName = "UAT"
+            } elseif ($branch -in @("main", "master")) {
+              $envName = "Prod"
+            } else {
+              $envName = "Dev"
+            }
+          }
 
+          $sitePath = "${{ github.event.inputs.iis_site_path }}"
           $appPool = "${{ github.event.inputs.app_pool_name }}"
-          if ([string]::IsNullOrWhiteSpace($appPool)) { $appPool = "Plexoc" }
 
           Write-Host "=========================================================="
           Write-Host " Triggering SMS Backend IIS Deployment via GitHub Actions"
-          Write-Host " Target IIS Path: $sitePath"
-          Write-Host " Service/AppPool: $appPool"
+          Write-Host " Environment:     $envName"
           Write-Host " Branch:          ${{ github.ref_name }}"
+          if (-not [string]::IsNullOrWhiteSpace($sitePath)) {
+            Write-Host " Custom IIS Path: $sitePath"
+          }
+          if (-not [string]::IsNullOrWhiteSpace($appPool)) {
+            Write-Host " Custom Service:  $appPool"
+          }
           Write-Host " Protected Files: appsettings.json, appsettings.*.json, web.config"
           Write-Host "=========================================================="
 
-          & ".\deploy\deploy.ps1" `
-            -SkipGitPull `
-            -IisSitePath "$sitePath" `
-            -AppPoolName "$appPool" `
-            -TargetBranch "${{ github.ref_name }}"
+          $deployArgs = @(
+            "-SkipGitPull",
+            "-Environment", "$envName",
+            "-TargetBranch", "${{ github.ref_name }}"
+          )
+          if (-not [string]::IsNullOrWhiteSpace($sitePath)) {
+            $deployArgs += @("-IisSitePath", "$sitePath")
+          }
+          if (-not [string]::IsNullOrWhiteSpace($appPool)) {
+            $deployArgs += @("-AppPoolName", "$appPool")
+          }
+
+          & ".\deploy\deploy.ps1" @deployArgs

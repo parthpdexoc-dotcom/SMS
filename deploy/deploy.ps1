@@ -2,15 +2,17 @@
 .SYNOPSIS
     Automated CI/CD Deployment Script for SMS Backend on Windows Server (IIS).
 .DESCRIPTION
-    1. Validates repository and target branch.
+    1. Validates repository, target branch, and environment (Dev, UAT, Prod).
     2. Automatically creates a timestamped backup of the current live site folder.
     3. Builds and publishes SMS in Release mode.
     4. Safely engages app_offline.htm in IIS to release file locks.
     5. Syncs published binaries to live IIS directory WITHOUT overwriting:
        - appsettings.json
-       - appsettings.Development.json (and any appsettings.*.json)
+       - appsettings.Development.json
+       - appsettings.UAT.json
+       - appsettings.Production.json (and any appsettings.*.json)
        - web.config
-    6. Cleans up app_offline.htm and recycles/restarts IIS AppPool / Windows Service 'Plexoc'.
+    6. Cleans up app_offline.htm and recycles/restarts IIS AppPool / Windows Service.
 #>
 
 [CmdletBinding()]
@@ -19,10 +21,14 @@ param(
     [string]$TargetBranch = "develop",
 
     [Parameter(Mandatory = $false)]
-    [string]$IisSitePath = "C:\inetpub\wwwroot\SMSAPI",
+    [ValidateSet("Dev", "UAT", "Prod", "development", "uat", "prod", "production", "")]
+    [string]$Environment = "",
 
     [Parameter(Mandatory = $false)]
-    [string]$AppPoolName = "Plexoc",
+    [string]$IisSitePath = "",
+
+    [Parameter(Mandatory = $false)]
+    [string]$AppPoolName = "",
 
     [Parameter(Mandatory = $false)]
     [string]$RepoDir = $PSScriptRoot + "\..",
@@ -53,20 +59,76 @@ function Write-Failure ([string]$msg) {
 }
 
 try {
-    Write-Step "Starting SMS Backend Deployment..."
-    
-    # Auto-detect path if Plexoc subdirectory is used
-    if (-not (Test-Path $IisSitePath) -and (Test-Path "C:\inetpub\wwwroot\Plexoc\SMSAPI")) {
-        $IisSitePath = "C:\inetpub\wwwroot\Plexoc\SMSAPI"
-    } elseif (-not (Test-Path $IisSitePath) -and (Test-Path "C:\inetpub\wwwroot\SMS_API")) {
-        $IisSitePath = "C:\inetpub\wwwroot\SMS_API"
+    # 1. Resolve Environment from Branch or Parameter
+    if ([string]::IsNullOrWhiteSpace($Environment)) {
+        if ($TargetBranch -match "uat") {
+            $Environment = "UAT"
+        } elseif ($TargetBranch -in @("main", "master", "prod", "production")) {
+            $Environment = "Prod"
+        } else {
+            $Environment = "Dev"
+        }
+    } else {
+        # Normalize casing
+        if ($Environment -in @("uat", "UAT")) {
+            $Environment = "UAT"
+        } elseif ($Environment -in @("prod", "production", "Prod")) {
+            $Environment = "Prod"
+        } else {
+            $Environment = "Dev"
+        }
     }
 
-    Write-Host "Target IIS Path:  $IisSitePath"
-    Write-Host "Service/AppPool:  $AppPoolName"
-    Write-Host "Repository Dir:   $RepoDir"
+    # 2. Determine Environment-Specific Defaults
+    $defaultIisPath = ""
+    $defaultAppPool = ""
 
-    # 1. Verify Directories
+    switch ($Environment) {
+        "Dev" {
+            $defaultAppPool = "Plexoc"
+            if (-not (Test-Path $IisSitePath) -and (Test-Path "C:\inetpub\wwwroot\Plexoc\SMSAPI")) {
+                $defaultIisPath = "C:\inetpub\wwwroot\Plexoc\SMSAPI"
+            } elseif (-not (Test-Path $IisSitePath) -and (Test-Path "C:\inetpub\wwwroot\SMS_API")) {
+                $defaultIisPath = "C:\inetpub\wwwroot\SMS_API"
+            } else {
+                $defaultIisPath = "C:\inetpub\wwwroot\SMSAPI"
+            }
+        }
+        "UAT" {
+            $defaultAppPool = "Plexoc_UAT"
+            if (-not (Test-Path $IisSitePath) -and (Test-Path "C:\inetpub\wwwroot\Plexoc\SMSAPI_UAT")) {
+                $defaultIisPath = "C:\inetpub\wwwroot\Plexoc\SMSAPI_UAT"
+            } else {
+                $defaultIisPath = "C:\inetpub\wwwroot\SMSAPI_UAT"
+            }
+        }
+        "Prod" {
+            $defaultAppPool = "Plexoc_Prod"
+            if (-not (Test-Path $IisSitePath) -and (Test-Path "C:\inetpub\wwwroot\Plexoc\SMSAPI_Prod")) {
+                $defaultIisPath = "C:\inetpub\wwwroot\Plexoc\SMSAPI_Prod"
+            } elseif (-not (Test-Path $IisSitePath) -and (Test-Path "C:\inetpub\wwwroot\SMSAPI_Prod")) {
+                $defaultIisPath = "C:\inetpub\wwwroot\SMSAPI_Prod"
+            } else {
+                $defaultIisPath = "C:\inetpub\wwwroot\SMSAPI"
+            }
+        }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($IisSitePath)) {
+        $IisSitePath = $defaultIisPath
+    }
+    if ([string]::IsNullOrWhiteSpace($AppPoolName)) {
+        $AppPoolName = $defaultAppPool
+    }
+
+    Write-Step "Starting SMS Backend Deployment ($Environment Environment)..."
+    Write-Host "Environment:     $Environment"
+    Write-Host "Target IIS Path: $IisSitePath"
+    Write-Host "Service/AppPool: $AppPoolName"
+    Write-Host "Target Branch:   $TargetBranch"
+    Write-Host "Repository Dir:  $RepoDir"
+
+    # 3. Verify Directories
     if (-not (Test-Path $RepoDir)) {
         throw "Repository directory '$RepoDir' not found."
     }
@@ -98,7 +160,7 @@ try {
         New-Item -ItemType Directory -Path $IisSitePath -Force | Out-Null
     }
 
-    # 2. Update Source from Git (optional, skipped if handled by GitHub Actions runner)
+    # 4. Update Source from Git (optional, skipped if handled by GitHub Actions runner)
     if (-not $SkipGitPull) {
         Write-Step "Updating repository working tree to latest '$TargetBranch'..."
         Push-Location $RepoDir
@@ -112,26 +174,26 @@ try {
         }
     }
 
-    # 3. Clean Temp Publish Directory
+    # 5. Clean Temp Publish Directory
     if (Test-Path $TempPublishDir) {
         Remove-Item -Path $TempPublishDir -Recurse -Force
     }
     New-Item -ItemType Directory -Path $TempPublishDir -Force | Out-Null
 
-    # 4. Build and Publish .NET Web App
+    # 6. Build and Publish .NET Web App
     $csprojPath = Join-Path $RepoDir "SMS\SMS.csproj"
     if (-not (Test-Path $csprojPath)) {
         throw "Could not find project file at '$csprojPath'."
     }
 
-    Write-Step "Publishing SMS project in Release configuration..."
+    Write-Step "Publishing SMS project in Release configuration for '$Environment'..."
     dotnet publish "$csprojPath" -c Release -o "$TempPublishDir" --nologo -v q
     if ($LASTEXITCODE -ne 0) {
         throw "dotnet publish failed with exit code $LASTEXITCODE."
     }
     Write-Success "Build and publish succeeded."
 
-    # 5. Place app_offline.htm to release IIS file locks
+    # 7. Place app_offline.htm to release IIS file locks
     Write-Step "Placing app_offline.htm in IIS directory..."
     $appOfflinePath = Join-Path $IisSitePath "app_offline.htm"
     $offlineHtml = @"
@@ -139,7 +201,7 @@ try {
 <html>
 <head><title>Application Updating</title></head>
 <body style="font-family: Arial, sans-serif; text-align: center; padding-top: 100px;">
-    <h2>SMS API is updating...</h2>
+    <h2>SMS API ($Environment) is updating...</h2>
     <p>Please wait a moment while the latest version is deployed.</p>
 </body>
 </html>
@@ -147,11 +209,11 @@ try {
     Set-Content -Path $appOfflinePath -Value $offlineHtml -Encoding UTF8
     Start-Sleep -Seconds 2
 
-    # 6. Copy Published Artifacts with ROBOCOPY
+    # 8. Copy Published Artifacts with ROBOCOPY
     # STRICT EXCLUSION: appsettings.json, appsettings.*.json, and web.config are NEVER overwritten
     Write-Step "Syncing new binaries to IIS directory (protecting appsettings.json and web.config)..."
     
-    $excludeFiles = @("appsettings.json", "appsettings.Development.json", "appsettings.*.json", "web.config")
+    $excludeFiles = @("appsettings.json", "appsettings.Development.json", "appsettings.UAT.json", "appsettings.Production.json", "appsettings.*.json", "web.config")
     
     $robocopyArgs = @(
         "$TempPublishDir",
@@ -172,13 +234,13 @@ try {
     }
     Write-Success "Binaries synced successfully. Server appsettings.json and web.config remained untouched."
 
-    # 7. Remove app_offline.htm to bring API back online
+    # 9. Remove app_offline.htm to bring API back online
     Write-Step "Removing app_offline.htm and restoring API..."
     if (Test-Path $appOfflinePath) {
         Remove-Item -Path $appOfflinePath -Force
     }
 
-    # 8. Recycle IIS AppPool / Restart Service 'Plexoc'
+    # 10. Recycle IIS AppPool / Restart Service
     if (![string]::IsNullOrWhiteSpace($AppPoolName)) {
         try {
             $recycled = $false
@@ -189,13 +251,21 @@ try {
                     Restart-WebAppPool -Name $AppPoolName
                     Write-Success "AppPool '$AppPoolName' recycled."
                     $recycled = $true
+                } elseif (Test-Path "IIS:\AppPools\Plexoc") {
+                    Write-Step "Recycling fallback IIS Application Pool 'Plexoc'..."
+                    Restart-WebAppPool -Name "Plexoc"
+                    Write-Success "AppPool 'Plexoc' recycled."
+                    $recycled = $true
                 }
             }
             if (-not $recycled) {
                 $appCmd = "$env:SystemRoot\system32\inetsrv\appcmd.exe"
                 if (Test-Path $appCmd) {
-                    & $appCmd recycle apppool /apppool.name:"$AppPoolName" | Out-Null
-                    Write-Success "AppPool '$AppPoolName' recycled via appcmd."
+                    & $appCmd recycle apppool /apppool.name:"$AppPoolName" 2>&1 | Out-Null
+                    if ($LASTEXITCODE -ne 0) {
+                        & $appCmd recycle apppool /apppool.name:"Plexoc" 2>&1 | Out-Null
+                    }
+                    Write-Success "AppPool recycled via appcmd."
                     $recycled = $true
                 }
             }
@@ -204,6 +274,13 @@ try {
                 Write-Step "Restarting Windows Service '$AppPoolName'..."
                 Restart-Service -Name $AppPoolName -Force
                 Write-Success "Windows Service '$AppPoolName' restarted."
+            } elseif ($AppPoolName -ne "Plexoc") {
+                $plexocService = Get-Service -Name "Plexoc" -ErrorAction SilentlyContinue
+                if ($plexocService -and $plexocService.Status -eq "Running") {
+                    Write-Step "Restarting Windows Service 'Plexoc'..."
+                    Restart-Service -Name "Plexoc" -Force
+                    Write-Success "Windows Service 'Plexoc' restarted."
+                }
             }
         }
         catch {
@@ -211,14 +288,16 @@ try {
         }
     }
 
-    # 9. Clean Temp Directory
+    # 11. Clean Temp Directory
     if (Test-Path $TempPublishDir) {
         Remove-Item -Path $TempPublishDir -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     Write-Success "=========================================================="
     Write-Success " SMS Backend Deployment Completed Successfully! "
-    Write-Success " Target: $IisSitePath | Service/AppPool: $AppPoolName"
+    Write-Success " Environment:     $Environment"
+    Write-Success " Target Path:     $IisSitePath"
+    Write-Success " Service/AppPool: $AppPoolName"
     Write-Success " Live configs preserved. Backup saved before release."
     Write-Success "=========================================================="
     exit 0
