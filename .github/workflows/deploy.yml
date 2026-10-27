@@ -1,0 +1,60 @@
+name: Deploy Backend to IIS
+
+on:
+  push:
+    branches:
+      - develop
+      - Develop
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+  workflow_dispatch:
+    inputs:
+      iis_site_path:
+        description: 'Target IIS Site Directory on Windows Server'
+        required: false
+        default: 'C:\inetpub\wwwroot\SMSAPI'
+      app_pool_name:
+        description: 'IIS Application Pool / Service Name'
+        required: false
+        default: 'Plexoc'
+      skip_deployment:
+        description: 'Build and validate only (do not deploy to IIS)'
+        type: boolean
+        default: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, windows]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Execute Backend Deployment
+        shell: powershell
+        run: |
+          $sitePath = "${{ github.event.inputs.iis_site_path }}"
+          if ([string]::IsNullOrWhiteSpace($sitePath)) { $sitePath = "C:\inetpub\wwwroot\SMSAPI" }
+
+          $appPool = "${{ github.event.inputs.app_pool_name }}"
+          if ([string]::IsNullOrWhiteSpace($appPool)) { $appPool = "Plexoc" }
+
+          Write-Host "=========================================================="
+          Write-Host " Triggering SMS Backend IIS Deployment via GitHub Actions"
+          Write-Host " Target IIS Path: $sitePath"
+          Write-Host " Service/AppPool: $appPool"
+          Write-Host " Branch:          ${{ github.ref_name }}"
+          Write-Host " Protected Files: appsettings.json, appsettings.*.json, web.config"
+          Write-Host "=========================================================="
+
+          & ".\deploy\deploy.ps1" `
+            -SkipGitPull `
+            -IisSitePath "$sitePath" `
+            -AppPoolName "$appPool" `
+            -TargetBranch "${{ github.ref_name }}"
