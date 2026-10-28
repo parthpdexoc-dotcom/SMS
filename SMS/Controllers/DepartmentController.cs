@@ -57,18 +57,18 @@ namespace SMS.Controllers
             return Ok(new PagedList<DepartmentDto>(ordered, pagination, result.TotalRecords));
         }
 
-        [Authorize(Policy = nameof(AuthorizationPolicyType.SuperUserOnly))]
-        [HttpGet("search")]
-        [ProducesResponseType(typeof(PagedList<DepartmentDto>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<PagedList<DepartmentDto>>> SearchAsync([FromQuery] string? searchTerm, [FromQuery] bool? isActive = true, [FromQuery] PageParam? pageParam = null)
-        {
-            pageParam ??= new PageParam();
-            if (string.IsNullOrWhiteSpace(pageParam.SortBy))
-                pageParam.SortBy = nameof(DepartmentDto.DepartmentCode);
+        //[Authorize(Policy = nameof(AuthorizationPolicyType.SuperUserOnly))]
+        //[HttpGet("search")]
+        //[ProducesResponseType(typeof(PagedList<DepartmentDto>), StatusCodes.Status200OK)]
+        //public async Task<ActionResult<PagedList<DepartmentDto>>> SearchAsync([FromQuery] string? searchTerm, [FromQuery] bool? isActive = true, [FromQuery] PageParam? pageParam = null)
+        //{
+        //    pageParam ??= new PageParam();
+        //    if (string.IsNullOrWhiteSpace(pageParam.SortBy))
+        //        pageParam.SortBy = nameof(DepartmentDto.DepartmentCode);
 
-            var result = await _service.SearchAsync(searchTerm, pageParam);
-            return Ok(result);
-        }
+        //    var result = await _service.SearchAsync(searchTerm, pageParam);
+        //    return Ok(result);
+        //}
 
         /// <summary>
         /// Gets a department by ID.
