@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace SMS.Generic.Dtos.Dtos
 {
     /// <summary>
-    /// Data Transfer Object for Admin operations.
+    /// Data Transfer Object for Admin operations. //testing git scenario 28 October 
     /// </summary>
     public class AdminDto : BaseDto
     {
@@ -13,6 +13,8 @@ namespace SMS.Generic.Dtos.Dtos
         /// <param name="source">The admin DTO to copy from.</param>
         public void CloneAdmin(AdminDto source)
         {
+
+            //adding some commets to check git scenario 
             if (source == null) return;
 
             AdminID = source.AdminID;
